@@ -7,6 +7,7 @@ Usage:
     python main.py --backtest       # Run backtester
     python main.py --backtest -d 30 # Backtest 30 days
     python main.py --status         # Show config and risk params
+    python main.py --dashboard      # Run dashboard only (no trading)
 """
 
 import argparse
@@ -37,11 +38,23 @@ def main():
         "--status", action="store_true",
         help="Print current configuration and exit",
     )
+    parser.add_argument(
+        "--dashboard", action="store_true",
+        help="Run the web dashboard only (no trading)",
+    )
+    parser.add_argument(
+        "--port", type=int, default=5555,
+        help="Dashboard port (default: 5555)",
+    )
 
     args = parser.parse_args()
 
     if args.status:
         _print_status()
+        return
+
+    if args.dashboard:
+        _run_dashboard(args)
         return
 
     if args.backtest:
@@ -80,6 +93,16 @@ def _run_backtest(args):
 
     result.print_report()
     backtester.export_results(result)
+
+
+def _run_dashboard(args):
+    """Run the web dashboard standalone."""
+    from spx_bot.dashboard import run_dashboard
+
+    print(f"\nStarting SPX 0DTE Dashboard on port {args.port}")
+    print(f"Open http://localhost:{args.port} in your browser")
+    print()
+    run_dashboard(port=args.port, debug=True)
 
 
 def _print_status():

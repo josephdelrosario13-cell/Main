@@ -13,12 +13,15 @@ This is the central loop that ties together:
 import logging
 import signal
 import sys
+import threading
 import time as time_mod
 from datetime import datetime, time
 from zoneinfo import ZoneInfo
 
 from spx_bot.config import AppConfig, BrokerType, config
 from spx_bot.brokers.paper_broker import PaperMarketData, PaperOrderExecutor
+from spx_bot.brokers.tastytrade_broker import TastytradeAuth, TastytradeMarketData, TastytradeOrderExecutor
+from spx_bot.brokers.ibkr_broker import IBKRClient, IBKRMarketData, IBKROrderExecutor
 from spx_bot.market_data import MarketDataProvider
 from spx_bot.orders import OrderExecutor
 from spx_bot.position_manager import PositionManager
@@ -70,18 +73,25 @@ class TradingEngine:
             self.market_data = md
             self.executor = PaperOrderExecutor(md)
         elif self.cfg.broker.broker == BrokerType.IBKR:
-            # Import IBKR implementation when available
-            raise NotImplementedError(
-                "IBKR broker not yet implemented. Set BROKER=paper for paper trading."
+            client = IBKRClient(
+                host=self.cfg.broker.ibkr_host,
+                port=self.cfg.broker.ibkr_port,
             )
+            md = IBKRMarketData(client)
+            self.market_data = md
+            self.executor = IBKROrderExecutor(client)
         elif self.cfg.broker.broker == BrokerType.SCHWAB:
             raise NotImplementedError(
                 "Schwab broker not yet implemented. Set BROKER=paper for paper trading."
             )
         elif self.cfg.broker.broker == BrokerType.TASTYTRADE:
-            raise NotImplementedError(
-                "Tastytrade broker not yet implemented. Set BROKER=paper for paper trading."
+            auth = TastytradeAuth(
+                username=self.cfg.broker.tastytrade_username,
+                password=self.cfg.broker.tastytrade_password,
             )
+            md = TastytradeMarketData(auth)
+            self.market_data = md
+            self.executor = TastytradeOrderExecutor(auth)
         else:
             raise ValueError(f"Unknown broker: {self.cfg.broker.broker}")
 
@@ -110,6 +120,10 @@ class TradingEngine:
             sys.exit(1)
 
         self.running = True
+
+        # Start web dashboard in background thread
+        self._start_dashboard()
+
         self.alerts.send(
             "Bot Started",
             f"SPX 0DTE bot is live. Capital: ${self.cfg.account.starting_capital:,.0f}"
@@ -300,6 +314,25 @@ class TradingEngine:
                 status["unrealized_pnl"],
                 len(self.position_manager.open_positions),
             )
+
+    def _start_dashboard(self):
+        """Start the web dashboard in a background thread."""
+        try:
+            from spx_bot.dashboard import init_dashboard, run_dashboard
+            init_dashboard(
+                engine=self,
+                position_manager=self.position_manager,
+                risk_manager=self.risk_manager,
+            )
+            dashboard_thread = threading.Thread(
+                target=run_dashboard,
+                kwargs={"host": "0.0.0.0", "port": 5555},
+                daemon=True,
+            )
+            dashboard_thread.start()
+            logger.info("Dashboard started at http://localhost:5555")
+        except Exception as e:
+            logger.warning("Dashboard failed to start: %s", e)
 
     def _emergency_shutdown(self):
         """Close everything immediately."""
