@@ -31,11 +31,11 @@ class BrokerType(Enum):
 @dataclass(frozen=True)
 class AccountConfig:
     """Account and capital parameters."""
-    starting_capital: float = float(os.getenv("STARTING_CAPITAL", "5000"))
+    starting_capital: float = float(os.getenv("STARTING_CAPITAL", "1000"))
     daily_return_target_pct: float = float(os.getenv("DAILY_RETURN_TARGET_PCT", "20"))
     max_daily_drawdown_pct: float = float(os.getenv("MAX_DAILY_DRAWDOWN_PCT", "20"))
-    max_trades_per_day: int = int(os.getenv("MAX_TRADES_PER_DAY", "4"))
-    max_per_trade: float = float(os.getenv("MAX_PER_TRADE", "1200"))
+    max_trades_per_day: int = int(os.getenv("MAX_TRADES_PER_DAY", "3"))
+    max_per_trade: float = float(os.getenv("MAX_PER_TRADE", "200"))
 
     @property
     def daily_return_target(self) -> float:

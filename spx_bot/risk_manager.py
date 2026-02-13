@@ -2,10 +2,10 @@
 Risk management engine.
 
 Enforces all hard limits:
-- Max 4 trades per day
-- Max $1,200 per trade
-- Max 20% daily drawdown ($1,000)
-- Daily P&L target of 20% ($1,000)
+- Max 3 trades per day
+- Max $200 per trade
+- Max 20% daily drawdown ($200)
+- Daily P&L target of 20% ($200)
 - Position sizing based on remaining risk budget
 """
 
