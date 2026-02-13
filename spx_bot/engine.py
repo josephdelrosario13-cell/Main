@@ -21,7 +21,7 @@ from zoneinfo import ZoneInfo
 from spx_bot.config import AppConfig, BrokerType, config
 from spx_bot.brokers.paper_broker import PaperMarketData, PaperOrderExecutor
 from spx_bot.brokers.tastytrade_broker import TastytradeAuth, TastytradeMarketData, TastytradeOrderExecutor
-from spx_bot.brokers.ibkr_broker import IBKRClient, IBKRMarketData, IBKROrderExecutor
+from spx_bot.brokers.ibkr_broker import IBKRConnection, IBKRMarketData, IBKROrderExecutor
 from spx_bot.market_data import MarketDataProvider
 from spx_bot.orders import OrderExecutor
 from spx_bot.position_manager import PositionManager
@@ -73,13 +73,14 @@ class TradingEngine:
             self.market_data = md
             self.executor = PaperOrderExecutor(md)
         elif self.cfg.broker.broker == BrokerType.IBKR:
-            client = IBKRClient(
+            conn = IBKRConnection(
                 host=self.cfg.broker.ibkr_host,
                 port=self.cfg.broker.ibkr_port,
+                client_id=self.cfg.broker.ibkr_client_id,
             )
-            md = IBKRMarketData(client)
+            md = IBKRMarketData(conn)
             self.market_data = md
-            self.executor = IBKROrderExecutor(client)
+            self.executor = IBKROrderExecutor(conn)
         elif self.cfg.broker.broker == BrokerType.SCHWAB:
             raise NotImplementedError(
                 "Schwab broker not yet implemented. Set BROKER=paper for paper trading."

@@ -152,45 +152,50 @@ class TestTastytradeBroker:
 # ─── IBKR Broker Tests ───────────────────────────────────────────────
 
 class TestIBKRBroker:
-    def test_client_connect_success(self):
-        from spx_bot.brokers.ibkr_broker import IBKRClient
+    def test_connection_connect_success(self):
+        from spx_bot.brokers.ibkr_broker import IBKRConnection
 
-        client = IBKRClient()
+        conn = IBKRConnection()
+        mock_ib = MagicMock()
+        mock_ib.managedAccounts.return_value = ["DU1234567"]
+        conn.ib = mock_ib
 
-        auth_resp = MagicMock()
-        auth_resp.json.return_value = {"authenticated": True}
-        auth_resp.raise_for_status = MagicMock()
-
-        accounts_resp = MagicMock()
-        accounts_resp.json.return_value = [{"id": "U1234567"}]
-        accounts_resp.raise_for_status = MagicMock()
-
-        with patch.object(client._session, "get", side_effect=[auth_resp, accounts_resp]):
-            result = client.connect()
+        result = conn.connect()
 
         assert result is True
-        assert client.account_id == "U1234567"
+        assert conn.account_id == "DU1234567"
+        mock_ib.connect.assert_called_once()
 
-    def test_client_connect_not_authenticated(self):
-        from spx_bot.brokers.ibkr_broker import IBKRClient
+    def test_connection_connect_refused(self):
+        from spx_bot.brokers.ibkr_broker import IBKRConnection
 
-        client = IBKRClient()
+        conn = IBKRConnection()
+        mock_ib = MagicMock()
+        mock_ib.connect.side_effect = ConnectionRefusedError()
+        conn.ib = mock_ib
 
-        auth_resp = MagicMock()
-        auth_resp.json.return_value = {"authenticated": False}
-        auth_resp.raise_for_status = MagicMock()
-
-        with patch.object(client._session, "get", return_value=auth_resp):
-            result = client.connect()
+        result = conn.connect()
 
         assert result is False
 
-    def test_order_executor_requires_connection(self):
-        from spx_bot.brokers.ibkr_broker import IBKRClient, IBKROrderExecutor
+    def test_connection_disconnect(self):
+        from spx_bot.brokers.ibkr_broker import IBKRConnection
 
-        client = IBKRClient()
-        client.account_id = None
-        executor = IBKROrderExecutor(client)
+        conn = IBKRConnection()
+        mock_ib = MagicMock()
+        mock_ib.isConnected.return_value = True
+        conn.ib = mock_ib
+
+        conn.disconnect()
+        mock_ib.disconnect.assert_called_once()
+
+    def test_order_executor_requires_connection(self):
+        from spx_bot.brokers.ibkr_broker import IBKRConnection, IBKROrderExecutor
+
+        conn = MagicMock(spec=IBKRConnection)
+        conn.connected = False
+        conn.ib = MagicMock()
+        executor = IBKROrderExecutor(conn)
 
         order = Order(
             spread_side=SpreadSide.BULL_PUT,
